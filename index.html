@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>情绪垃圾桶</title>
+<style>
+:root{--bg:#ffe9f1;--card:#fffafc;--ink:#4a3340;--sub:#b79aa8;--pink:#ee7fa5;--pink2:#fbd3e1;--line:#f3d6e1;--glow:rgba(238,127,165,.4);--hand:-apple-system,"PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#2b2028;--card:#392b35;--ink:#f6e6ee;--sub:#a58a99;--pink:#f08cb0;--pink2:#4d3643;--line:#4a3a45;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#2b2028;--card:#392b35;--ink:#f6e6ee;--sub:#a58a99;--pink:#f08cb0;--pink2:#4d3643;--line:#4a3a45;color-scheme:dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:-apple-system,"PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+#app{max-width:430px;margin:0 auto;padding:18px 16px 110px}
+.hand{font-family:var(--hand)}
+.top{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:10px}
+.top h1{margin:0;font-size:34px;line-height:1}
+.top small{color:var(--sub);font-size:13px}
+.nav{display:flex;gap:8px}
+.nav button{height:34px;min-width:34px;padding:0 12px;border-radius:17px;background:var(--pink2);color:var(--pink);font-size:14px}
+.week,.grid{display:grid;grid-template-columns:repeat(7,1fr);text-align:center}
+.week{margin-top:14px;color:var(--sub);font-size:12px}
+.cell{height:50px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border-radius:25px}
+.cell b{font-size:15px;font-weight:600}
+.cell i{font-style:normal;font-size:13px;height:16px;line-height:16px}
+.cell.today{background:var(--pink);color:#fff;box-shadow:0 4px 12px var(--glow)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:14px 16px}
+.card .big{font-size:30px;font-weight:700;color:var(--pink);line-height:1.1}
+.card p{margin:4px 0 0;font-size:13px}
+.card small{color:var(--sub);font-size:12px}
+.focus{display:flex;gap:12px;align-items:center;background:var(--pink2);border-color:transparent;margin-top:12px}
+.focus span{font-size:36px}
+.focus h3{margin:0;color:var(--pink);font-size:15px}
+.focus p{margin:2px 0 0;font-size:13px}
+.cta{width:100%;margin-top:14px;height:52px;border-radius:26px;background:var(--pink);color:#fff;font-size:17px;font-weight:600;box-shadow:0 6px 16px var(--glow)}
+.bar{height:10px;border-radius:5px;background:var(--pink2);overflow:hidden;margin:10px 0 4px}
+.bar div{height:100%;background:var(--pink);border-radius:5px}
+.row{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:14px}
+.row .track{flex:1;height:10px;border-radius:5px;background:var(--pink2);overflow:hidden}
+.row .track div{height:100%;background:var(--pink);border-radius:5px}
+.tabs{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;background:var(--card);border-top:1px solid var(--line);padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px));z-index:5}
+.tabs>div{width:100%;max-width:430px;display:flex;justify-content:space-around;align-items:center}
+.tabs .t{display:flex;flex-direction:column;align-items:center;font-size:11px;color:var(--sub);gap:2px}
+.tabs .t span{font-size:22px}
+.tabs .t.on{color:var(--pink)}
+.fab{width:56px;height:56px;border-radius:28px;background:var(--pink);color:#fff;font-size:30px;margin-top:-26px;box-shadow:0 6px 16px var(--glow)}
+#flow{position:fixed;inset:0;background:var(--bg);z-index:20;display:none;overflow:hidden}
+#flow.open{display:block}
+.fin{max-width:430px;height:100%;margin:0 auto;padding:calc(14px + env(safe-area-inset-top,0px)) 18px calc(18px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;position:relative}
+.fhead{display:flex;align-items:center;justify-content:space-between}
+.fhead h2{margin:0;font-size:22px}
+.x{width:36px;height:36px;border-radius:18px;background:var(--pink2);color:var(--pink);font-size:18px}
+.picker{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px}
+.pick{border-radius:22px;padding:14px 0 10px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:14px;color:#5a4a50;transition:transform .15s}
+.pick span{font-size:38px;line-height:1.1}
+.pick:active,.pick.sel{transform:scale(1.1)}
+#s2,#done{display:none;flex:1;flex-direction:column}
+#s2.on{display:flex}
+.stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding-top:14px}
+.note{position:relative;z-index:1;width:min(100%,310px);padding:16px 18px 14px;border-radius:4px;background:var(--paper,#fff3b0);color:#5a4a50;box-shadow:0 8px 20px rgba(120,60,90,.18);transform:rotate(-2deg)}
+.note::before{content:"";position:absolute;top:-12px;left:50%;width:84px;height:24px;margin-left:-42px;background:rgba(255,255,255,.55);transform:rotate(2deg)}
+.note .lab{font-family:var(--hand);font-size:16px;display:flex;justify-content:space-between}
+.note textarea{display:block;width:100%;height:220px;margin-top:6px;border:0;outline:0;resize:none;background:repeating-linear-gradient(transparent 0 33px,rgba(90,60,70,.18) 33px 34px);font-family:var(--hand);font-size:17px;line-height:34px;color:#4a3340;padding:0}
+.note textarea::placeholder{color:rgba(90,60,70,.4)}
+.note.crumpling{background-image:radial-gradient(circle at 30% 30%,rgba(255,255,255,.8),transparent 40%),repeating-conic-gradient(rgba(0,0,0,.07) 0 15deg,transparent 15deg 30deg)}
+.note.crumpling>*,.note.crumpling::before{opacity:0;transition:opacity .15s}
+.bottom{width:100%;display:flex;align-items:flex-end;justify-content:space-between;padding:0 4px}
+.bottom .sp{width:64px}
+#can{position:relative;z-index:2;display:block}
+#lid{transform-box:fill-box;transform-origin:left bottom}
+.send{width:64px;height:64px;border-radius:32px;background:var(--pink);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px var(--glow)}
+.hint{text-align:center;font-size:12px;color:var(--sub);margin:6px 0 0}
+.pop{position:absolute;left:50%;font-family:var(--hand);font-size:34px;color:var(--pink);opacity:0;pointer-events:none}
+#done{position:absolute;inset:0;background:var(--bg);align-items:center;justify-content:center;text-align:center;gap:6px;padding:20px}
+#done.on{display:flex}
+#done .cat{font-size:72px}
+#done h2{margin:6px 0 0;font-size:34px;font-weight:400}
+#done p{color:var(--sub);margin:4px 0 18px}
+#done .cta{width:220px}
+.cell.has{cursor:pointer}
+#done{z-index:5}
+#can{transform-origin:50% 100%}
+#cf{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+#cf i{position:absolute;top:-30px;display:block;animation:fall linear infinite}
+@keyframes fall{0%{transform:translate(0,0) rotate(0)}50%{transform:translate(14px,55vh) rotate(200deg)}100%{transform:translate(-10px,112vh) rotate(400deg)}}
+#done>*{position:relative;z-index:1}
+#done>#cf{position:absolute;z-index:0}
+.mascot svg{width:230px;max-width:72vw;height:auto;display:block;animation:bob 1.7s ease-in-out infinite;transform-origin:50% 90%}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-14px) rotate(3deg)}}
+#done h2{font-size:22px;line-height:1.5;max-width:300px}
+#dsub{display:none}
+@media (prefers-reduced-motion:reduce){#cf i,.mascot svg{animation:none}}
+.mi{width:1.25em;height:1.25em;display:inline-block;vertical-align:-.3em}
+.cell i{height:20px;line-height:20px}
+.cell i .mi{width:19px;height:19px;vertical-align:middle}
+.picker{grid-template-columns:repeat(4,1fr);gap:10px}
+.pick{background:var(--card);border:1px solid var(--line);color:var(--ink);padding:8px 0;border-radius:18px;font-size:13px;gap:2px}
+.pick span{display:block;width:100%;padding:2px 8px 0;font-size:inherit}
+.pick .mi{width:100%;height:auto;aspect-ratio:1/1;display:block;vertical-align:baseline}
+.pick.sel{border-color:var(--pink);box-shadow:0 0 0 2px var(--pink)}
+.lnk{color:var(--pink);font-size:13px;margin-left:10px}
+.mini{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px}
+.mini button{border:1px solid var(--line);background:var(--card);border-radius:14px;padding:6px 0 4px;display:flex;flex-direction:column;align-items:center;font-size:11px;gap:2px}
+.mini button.on{border-color:var(--pink);box-shadow:0 0 0 2px var(--pink)}
+.mini .mi{width:34px;height:34px;vertical-align:baseline}
+.mini em{font-style:normal}
+#ball{position:fixed;z-index:1;width:80px;height:80px;display:none;filter:drop-shadow(0 5px 5px rgba(60,30,45,.3));pointer-events:none}
+#ball .bi{width:100%;height:100%;clip-path:polygon(48% 0,62% 5%,78% 3%,88% 15%,98% 30%,95% 48%,100% 64%,90% 80%,80% 95%,62% 90%,46% 100%,30% 92%,14% 88%,7% 72%,0 55%,6% 38%,3% 20%,18% 10%,32% 6%);background:linear-gradient(115deg,transparent 30%,rgba(0,0,0,.16) 31%,transparent 35%),linear-gradient(25deg,transparent 47%,rgba(255,255,255,.6) 48%,transparent 52%),linear-gradient(160deg,transparent 58%,rgba(0,0,0,.14) 59%,transparent 64%),linear-gradient(70deg,transparent 18%,rgba(255,255,255,.45) 19%,transparent 24%),conic-gradient(from 20deg at 45% 55%,rgba(0,0,0,.1) 0 40deg,rgba(255,255,255,.35) 40deg 85deg,rgba(0,0,0,.2) 85deg 130deg,rgba(255,255,255,.12) 130deg 200deg,rgba(0,0,0,.08) 200deg 250deg,rgba(255,255,255,.3) 250deg 310deg,rgba(0,0,0,.18) 310deg 360deg),radial-gradient(circle at 32% 28%,rgba(255,255,255,.7),transparent 45%),radial-gradient(circle at 72% 80%,rgba(0,0,0,.3),transparent 58%),var(--paper,#fff3b0)}
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}
+.quick button{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:12px 0 9px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px}
+.quick span{font-size:24px;line-height:1.1}
+#toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:max-content;max-width:80%;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:20px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:30;text-align:center}
+#toast.on{opacity:1}
+.inp{display:block;width:100%;height:46px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:0 14px;font:inherit;font-size:16px;margin-top:12px;outline:0}
+.inp:focus{border-color:var(--pink)}
+.inp:disabled{opacity:.6}
+.seg{display:flex;background:var(--pink2);border-radius:18px;padding:3px;margin:10px 0 4px}
+.seg button{flex:1;height:30px;border-radius:15px;font-size:14px;color:var(--sub)}
+.seg button.on{background:var(--card);color:var(--pink);font-weight:600}
+.sw{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+.sw button{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px}
+.sw i{width:40px;height:40px;border-radius:20px;display:block;border:3px solid var(--card);box-shadow:0 0 0 2px transparent}
+.sw button.on i{box-shadow:0 0 0 2px var(--pink)}
+.ana h3{margin:0;font-size:18px;color:var(--pink)}
+.ana p{font-size:14px;line-height:1.7;margin:6px 0}
+.ana ul{margin:4px 0 0;padding-left:20px;font-size:14px;line-height:1.8}
+.ana .warn{background:var(--pink2);border-radius:12px;padding:10px 12px;margin-top:10px}
+#sheet{position:fixed;inset:0;z-index:15;display:none;background:rgba(60,30,45,.35)}
+#sheet.open{display:block}
+.sheetin{position:absolute;left:0;right:0;bottom:0;max-width:430px;margin:0 auto;max-height:78%;overflow:auto;background:var(--bg);border-radius:24px 24px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom,0px))}
+.entry{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-top:10px}
+.entry .eh{display:flex;justify-content:space-between;font-size:13px;color:var(--sub)}
+.entry .eh b{color:var(--ink);font-size:15px}
+.entry p{margin:8px 0 0;font-size:16px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.entry p.empty{color:var(--sub);font-size:14px}
+@media (prefers-reduced-motion:reduce){.pick{transition:none}}
+</style>
+</head>
+<body>
+<svg width='0' height='0' style='position:absolute' aria-hidden='true'><defs>
+<symbol id='m0' viewBox='0 0 100 100'><path d='M50 14C76 12 91 32 89 55C87 78 69 89 48 88C26 87 11 72 12 50C13 30 28 15 50 14Z' fill='#ffe55f'/><ellipse cx='36' cy='30' rx='17' ry='8' fill='#fff' opacity='.35'/><circle cx='29' cy='60' r='7' fill='#ff9a8a' opacity='.5'/><circle cx='71' cy='60' r='7' fill='#ff9a8a' opacity='.5'/><path d='M32 48q5-6 10 0M58 48q5-6 10 0M44 60q6 6 12 0' fill='none' stroke='#7a4a3a' stroke-width='3.2' stroke-linecap='round'/></symbol>
+<symbol id='m1' viewBox='0 0 100 100'><path d='M50 14C78 14 90 34 88 56C86 78 68 88 48 87C26 86 12 70 13 50C14 30 28 14 50 14Z' fill='#ffc65a'/><ellipse cx='36' cy='30' rx='17' ry='8' fill='#fff' opacity='.3'/><rect x='24' y='43' width='22' height='14' rx='6' fill='#5a3a3a'/><rect x='54' y='43' width='22' height='14' rx='6' fill='#5a3a3a'/><path d='M46 49h8' stroke='#5a3a3a' stroke-width='3'/><path d='M44 66q6 5 12 0' fill='none' stroke='#7a4a3a' stroke-width='3.2' stroke-linecap='round'/><path d='M84 5l3 8 8 3-8 3-3 8-3-8-8-3 8-3z' fill='#ffe27a'/></symbol>
+<symbol id='m2' viewBox='0 0 100 100'><g fill='#a5de5b'><circle cx='36' cy='36' r='23'/><circle cx='64' cy='36' r='23'/><circle cx='36' cy='64' r='23'/><circle cx='64' cy='64' r='23'/><rect x='30' y='30' width='40' height='40'/></g><ellipse cx='38' cy='24' rx='14' ry='6' fill='#fff' opacity='.3'/><circle cx='28' cy='62' r='6' fill='#ff9a8a' opacity='.45'/><circle cx='72' cy='62' r='6' fill='#ff9a8a' opacity='.45'/><path d='M32 46l8 4-8 4' fill='none' stroke='#7a4a3a' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/><circle cx='62' cy='50' r='3.2' fill='#7a4a3a'/><path d='M42 60q8 11 16 0z' fill='#fff' stroke='#7a4a3a' stroke-width='2.5' stroke-linejoin='round'/><g fill='#7cc24a'><circle cx='13' cy='84' r='5'/><circle cx='21' cy='84' r='5'/><circle cx='13' cy='92' r='5'/><circle cx='21' cy='92' r='5'/></g></symbol>
+<symbol id='m3' viewBox='0 0 100 100'><rect x='14' y='14' width='72' height='72' rx='24' fill='#a8e8ba'/><ellipse cx='36' cy='28' rx='17' ry='7' fill='#fff' opacity='.35'/><circle cx='28' cy='58' r='6' fill='#ffe27a' opacity='.7'/><circle cx='72' cy='58' r='6' fill='#ffe27a' opacity='.7'/><circle cx='38' cy='50' r='3.2' fill='#4a6a50'/><circle cx='62' cy='50' r='3.2' fill='#4a6a50'/><path d='M44 59q6 4 12 0' fill='none' stroke='#4a6a50' stroke-width='3' stroke-linecap='round'/></symbol>
+<symbol id='m4' viewBox='0 0 100 100'><path d='M16 24C30 12 70 12 84 22C92 38 90 66 82 80C66 90 34 90 18 80C8 64 8 40 16 24Z' fill='#f4976f'/><ellipse cx='36' cy='26' rx='17' ry='6' fill='#fff' opacity='.3'/><circle cx='26' cy='62' r='6' fill='#ff7a7a' opacity='.45'/><circle cx='74' cy='62' r='6' fill='#ff7a7a' opacity='.45'/><path d='M30 44l10 5-10 5M70 44l-10 5 10 5' fill='none' stroke='#7a3a2a' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/><path d='M42 68q8-10 16 0z' fill='#fff' stroke='#7a3a2a' stroke-width='2.5' stroke-linejoin='round'/><path d='M78 14c9-6 18 4 10 11c-6 5-13-1-9-6' fill='none' stroke='#f0653a' stroke-width='3' stroke-linecap='round'/></symbol>
+<symbol id='m5' viewBox='0 0 100 100'><path d='M50 14C76 14 90 32 88 54C86 76 68 88 48 87C27 86 12 72 13 50C14 30 28 14 50 14Z' fill='#98e27a'/><ellipse cx='36' cy='28' rx='17' ry='7' fill='#fff' opacity='.35'/><circle cx='28' cy='60' r='6' fill='#ffe27a' opacity='.7'/><circle cx='72' cy='60' r='6' fill='#ffe27a' opacity='.7'/><path d='M32 50q5 4 10 0M58 50q5 4 10 0M44 62q6 4 12 0' fill='none' stroke='#4a6a40' stroke-width='3' stroke-linecap='round'/><path d='M82 10v18M82 10l8 4' fill='none' stroke='#f1b63a' stroke-width='3' stroke-linecap='round'/><ellipse cx='77' cy='29' rx='6' ry='4.5' fill='#f7c948'/></symbol>
+<symbol id='m6' viewBox='0 0 100 100'><path d='M50 14C74 14 90 34 88 58C86 80 68 88 48 87C26 86 12 72 13 50C14 30 28 14 50 14Z' fill='#c7c6dc'/><ellipse cx='24' cy='32' rx='10' ry='15' fill='#eeeef8'/><circle cx='34' cy='52' r='5.5' fill='#fff' stroke='#6b6a85' stroke-width='2.5'/><circle cx='64' cy='52' r='5.5' fill='#fff' stroke='#6b6a85' stroke-width='2.5'/><circle cx='35' cy='53' r='2' fill='#6b6a85'/><circle cx='65' cy='53' r='2' fill='#6b6a85'/><path d='M42 68q8-5 16 0' fill='none' stroke='#6b6a85' stroke-width='3' stroke-linecap='round'/><path d='M82 28q6 8 0 13q-6-5 0-13z' fill='#aab8e8'/></symbol>
+<symbol id='m7' viewBox='0 0 100 100'><path d='M50 16C76 14 90 34 88 56C86 78 68 88 48 87C26 86 12 72 13 50C14 32 28 18 50 16Z' fill='#f0687c'/><ellipse cx='36' cy='30' rx='17' ry='7' fill='#fff' opacity='.3'/><circle cx='28' cy='62' r='6' fill='#ff9aa8' opacity='.6'/><circle cx='72' cy='62' r='6' fill='#ff9aa8' opacity='.6'/><path d='M28 40l14 6M72 40l-14 6M42 70q8-8 16 0' fill='none' stroke='#6a2030' stroke-width='3.2' stroke-linecap='round'/><circle cx='36' cy='53' r='3' fill='#6a2030'/><circle cx='64' cy='53' r='3' fill='#6a2030'/><g fill='#f9a8b6'><circle cx='82' cy='12' r='6'/><circle cx='90' cy='18' r='5'/><circle cx='82' cy='20' r='5'/></g></symbol>
+<symbol id='m8' viewBox='0 0 100 100'><path d='M12 62C12 36 30 20 52 22C76 24 90 42 88 62C87 78 72 86 50 86C28 86 12 78 12 62Z' fill='#a8d3f6'/><ellipse cx='38' cy='34' rx='17' ry='7' fill='#fff' opacity='.4'/><circle cx='35' cy='52' r='3.2' fill='#3a5a8a'/><circle cx='65' cy='52' r='3.2' fill='#3a5a8a'/><ellipse cx='33' cy='63' rx='3' ry='5' fill='#6fb0ee'/><ellipse cx='67' cy='63' rx='3' ry='5' fill='#6fb0ee'/><path d='M44 70q6-6 12 0' fill='none' stroke='#3a5a8a' stroke-width='3' stroke-linecap='round'/></symbol>
+<symbol id='m9' viewBox='0 0 100 100'><path d='M50 14C76 14 90 34 88 56C86 78 68 88 48 87C26 86 12 72 13 50C14 30 28 14 50 14Z' fill='#ffd3a3'/><ellipse cx='36' cy='28' rx='17' ry='7' fill='#fff' opacity='.4'/><circle cx='27' cy='58' r='7' fill='#ff9a8a' opacity='.55'/><circle cx='73' cy='58' r='7' fill='#ff9a8a' opacity='.55'/><path d='M32 48q5-6 10 0M58 48q5-6 10 0M42 58q8 8 16 0' fill='none' stroke='#7a4a3a' stroke-width='3' stroke-linecap='round'/><g transform='translate(82 16)'><g fill='#ff8f8f'><circle cy='-6' r='5'/><circle cx='6' cy='-2' r='5'/><circle cx='4' cy='5' r='5'/><circle cx='-4' cy='5' r='5'/><circle cx='-6' cy='-2' r='5'/></g><circle r='3.5' fill='#ffd54f'/></g></symbol>
+</defs></svg>
+<div id="app">
+  <div id="home"></div>
+  <div id="stats" style="display:none"></div>
+</div>
+
+<div class="tabs"><div>
+  <button class="t on" id="t1" onclick="tab('home')"><span>📅</span>日历</button>
+  <button class="fab" onclick="openFlow()" aria-label="丢一张便签">＋</button>
+  <button class="t" id="t2" onclick="tab('stats')"><span>👤</span>我的</button>
+</div></div>
+
+<div id="flow"><div class="fin">
+  <div class="fhead"><h2 class="hand" id="ftitle">今天心情怎么样？</h2><button class="x" onclick="closeFlow()" aria-label="关闭">✕</button></div>
+  <div class="picker" id="picker"></div>
+  <div id="s2"><div class="stage">
+    <div class="note" id="note">
+      <div class="lab"><span id="nlab"></span><span id="ndate"></span></div>
+      <textarea id="txt" maxlength="500"></textarea>
+    </div>
+    <div style="width:100%">
+      <div class="bottom">
+        <div class="sp"></div>
+        <svg id="can" viewBox="0 0 100 120" width="96" height="115">
+          <g id="lid"><rect x="12" y="14" width="76" height="11" rx="5.5" style="fill:var(--pink);opacity:.75"/><rect x="39" y="5" width="22" height="10" rx="5" style="fill:var(--pink);opacity:.75"/></g>
+          <path d="M20 28h60l-6 84a8 8 0 0 1-8 7H34a8 8 0 0 1-8-7z" style="fill:var(--pink2);stroke:var(--pink);stroke-width:3"/>
+          <path d="M40 42v60M50 42v60M60 42v60" style="stroke:var(--pink);stroke-width:3" stroke-linecap="round" opacity=".5"/>
+        </svg>
+        <button class="send" onclick="throwNote()" aria-label="丢进垃圾桶"><svg viewBox="0 0 24 24" width="30" height="30" fill="#fff"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg></button>
+      </div>
+      <p class="hint">没话说也行，点纸飞机直接丢</p>
+    </div>
+    
+    <div id="ball"><div class="bi"></div></div>
+  </div></div>
+  <div id="done">
+    <div id="cf"></div>
+    <div class="mascot"><svg viewBox='0 0 240 230' role='img' aria-label='小猪'><defs><path id='pgb' d='M54 100C54 84 66 78 84 78L162 78C180 78 190 86 190 102L192 170C192 190 180 202 160 202L82 202C62 202 52 190 52 172Z'/><path id='pge1' d='M58 92L56 62Q70 62 88 80Z'/><path id='pge2' d='M186 94L190 62Q176 62 158 80Z'/><path id='pgh' d='M98 82L126 20L156 82Z'/><path id='pgk' d='M118 160C96 170 66 172 34 160'/></defs><g fill='#fff' stroke='#fff' stroke-width='16' stroke-linejoin='round' stroke-linecap='round'><use href='#pgb'/><use href='#pge1'/><use href='#pge2'/><ellipse cx='94' cy='206' rx='15' ry='9'/><ellipse cx='152' cy='206' rx='15' ry='9'/><use href='#pgh' transform='rotate(9 128 82)'/><use href='#pgk' fill='none' stroke-width='24'/></g><g stroke='#858585' stroke-width='5' stroke-linejoin='round' stroke-linecap='round'><ellipse cx='94' cy='206' rx='15' ry='9' fill='#fff'/><ellipse cx='152' cy='206' rx='15' ry='9' fill='#fff'/><use href='#pge1' fill='#ffcfd8'/><use href='#pge2' fill='#ffcfd8'/><use href='#pgb' fill='#fff'/></g><path d='M72 122q10-10 20 0M154 122q10-10 20 0' fill='none' stroke='#6b6b6b' stroke-width='5' stroke-linecap='round'/><ellipse cx='70' cy='146' rx='12' ry='8' fill='#ffb3b3' opacity='.65'/><ellipse cx='176' cy='146' rx='12' ry='8' fill='#ffb3b3' opacity='.65'/><circle cx='123' cy='136' r='18' fill='#ffb8c6' stroke='#858585' stroke-width='4'/><ellipse cx='116' cy='136' rx='2.8' ry='4.5' fill='#d9758e'/><ellipse cx='130' cy='136' rx='2.8' ry='4.5' fill='#d9758e'/><use href='#pgk' fill='none' stroke='#cdb73f' stroke-width='11' stroke-linecap='round'/><use href='#pgk' fill='none' stroke='#f3ea9a' stroke-width='3' stroke-linecap='round' transform='translate(0 -2)'/><path d='M56 184Q123 200 188 184' fill='none' stroke='#f2a3b0' stroke-width='5' stroke-linecap='round'/><path d='M123 194C108 182 98 196 106 202C112 206 120 200 123 194ZM123 194C138 182 148 196 140 202C134 206 126 200 123 194Z' fill='#fbd0d8' stroke='#ee94a6' stroke-width='3' stroke-linejoin='round'/><circle cx='123' cy='194' r='4' fill='#ee94a6'/><g transform='rotate(9 128 82)'><use href='#pgh' fill='#f6b04c' stroke='#e58a2c' stroke-width='5' stroke-linejoin='round'/><path d='M110 68l32-8M119 46l15-3' stroke='#fde9cc' stroke-width='7' stroke-linecap='round' fill='none'/><circle cx='126' cy='18' r='11' fill='#fff' stroke='#f08a3a' stroke-width='5'/></g></svg></div>
+    <h2 class="hand" id="dline"></h2>
+    <p id="dsub"></p>
+    <button class="cta" onclick="closeFlow()">回到日历</button>
+    <button class="cta" style="background:var(--pink2);color:var(--pink);box-shadow:none" onclick="resetFlow()">再记一个情绪</button>
+  </div>
+</div></div>
+
+<div id="toast" role="status"></div>
+<div id="sheet" onclick="if(event.target===this)closeSheet()"><div class="sheetin" id="sheetin"></div></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const EM_OLD=[
+ {e:'😊',n:'开心',c:'#fff3b0',p:'有什么好事？写下来炫耀一下'},
+ {e:'😌',n:'平静',c:'#d8f3e6',p:'今天很安静，想记点什么？'},
+ {e:'😢',n:'难过',c:'#d6e8ff',p:'哭一下也可以，慢慢说…'},
+ {e:'😠',n:'生气',c:'#ffd4d0',p:'谁惹你了？尽情骂，反正会被丢掉'},
+ {e:'😣',n:'烦躁',c:'#ffe0c2',p:'什么事一直在烦你？'},
+ {e:'😵‍💫',n:'忙碌',c:'#e6dcff',p:'今天都在忙什么？吐个槽'},
+ {e:'😰',n:'焦虑',c:'#ffe0f0',p:'在担心什么？写出来会轻一点'},
+ {e:'😪',n:'疲惫',c:'#e8e4dc',p:'今天累在哪里？'},
+ {e:'🥺',n:'委屈',c:'#ffdbe8',p:'受了什么委屈？这里只有垃圾桶听得到'},
+ {e:'😑',n:'无聊',c:'#e3e8ec',p:'无聊到想写点什么？'},
+ {e:'🤩',n:'兴奋',c:'#ffe9a8',p:'发生什么啦？快说！'},
+ {e:'😶',n:'空空的',c:'#eef0f2',p:'说不清楚也没关系，随便写几个字'}
+];
+const EM=[
+ {n:'开心',c:'#fff3b0',p:'有什么好事？写下来炫耀一下'},
+ {n:'酷',c:'#ffe2a8',p:'今天有什么帅气的瞬间？'},
+ {n:'幸运',c:'#d9f0b8',p:'遇到什么好运了？记下来沾沾喜气'},
+ {n:'平静',c:'#d4f1dd',p:'今天很安静，想记点什么？'},
+ {n:'忙碌',c:'#ffd5c0',p:'今天都在忙什么？吐个槽'},
+ {n:'悠闲',c:'#d6f2c4',p:'今天做了什么悠闲的事？'},
+ {n:'累',c:'#dcdbe8',p:'今天累在哪里？说出来会好一点'},
+ {n:'生气',c:'#ffd0d6',p:'谁惹你了？尽情骂，反正会被丢掉'},
+ {n:'难过',c:'#d3e6fa',p:'哭一下也可以，慢慢说…'},
+ {n:'幸福',c:'#ffe6cf',p:'什么让你觉得幸福？'}
+];
+EM.forEach((m,i)=>m.e='<svg class="mi" viewBox="0 0 100 100"><use href="#m'+i+'"/></svg>');
+const LINES=['谢谢今天也在努力生活的你o(≧v≦)o'];
+const MON=['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
+const K='moodtrash.v1',pad=n=>String(n).padStart(2,'0');
+const key=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+function load(){
+  try{const s=localStorage.getItem(K);if(s){const o=JSON.parse(s);for(const k in o.days){const r=o.days[k];if(!Array.isArray(r))o.days[k]=Array.from({length:r.n||1},()=>({e:r.e,t:'',ts:0}))}o.prefs=o.prefs||{theme:0,nick:'',acct:''};if(!o.v){const mp=[0,3,8,7,7,4,4,6,8,5,2,3];for(const k in o.days)o.days[k].forEach(x=>{x.e=mp[x.e]});o.v=2}return o}}catch(e){}
+  const days={},t=new Date();
+  const ST={0:'今天天气很好，心情也跟着好。',3:'下午喝了杯茶，什么都没想。',8:'有点想家。',7:'地铁上被挤得好烦。',4:'开了一整天会，脑子嗡嗡的。',6:'好想睡觉……'};
+  [].forEach(([b,es])=>{const d=new Date(t);d.setDate(t.getDate()-b);days[key(d)]=es.map((e,i)=>({e,t:ST[e]||'',ts:d.getTime()-i*3600000}))});
+  return {days,v:2,prefs:{theme:0,nick:'',acct:''}};
+}
+function save(){data.u=Date.now();try{localStorage.setItem(K,JSON.stringify(data))}catch(e){}syncDb()}
+let data=load(),vy=new Date().getFullYear(),vm=new Date().getMonth(),cur=0,busy=false;
+function streak(){const d=new Date();if(!data.days[key(d)])d.setDate(d.getDate()-1);let n=0;while(data.days[key(d)]){n++;d.setDate(d.getDate()-1)}return n}
+function total(){return Object.values(data.days).reduce((a,r)=>a+r.length,0)}
+
+function renderHome(){
+  const now=new Date(),first=new Date(vy,vm,1).getDay(),len=new Date(vy,vm+1,0).getDate(),p=data.prefs;
+  let cells='';
+  for(let i=0;i<first;i++)cells+='<div class="cell"></div>';
+  for(let d=1;d<=len;d++){
+    const k=vy+'-'+pad(vm+1)+'-'+pad(d),r=data.days[k];
+    const em=r?EM[main(r)].e:'';
+    cells+='<div class="cell'+(k===key(now)?' today':'')+(k<=key(now)?' has':'')+'"'+(k<=key(now)?' onclick="showDay(\''+k+'\')"':'')+'><b>'+d+'</b><i>'+em+'</i></div>';
+  }
+  const pre=now.getFullYear()+'-'+pad(now.getMonth()+1);
+  let mc=0,dm=0;for(const k in data.days)if(k.startsWith(pre)){mc+=data.days[k].length;dm++}
+  $('#home').innerHTML=
+  '<div class="top"><div><h1 class="hand">'+MON[vm]+'</h1><small>'+vy+'　'+(p.acct&&p.nick?'Hi，'+esc(p.nick):'')+'</small></div>'+
+  '<div class="nav"><button onclick="mv(-1)" aria-label="上个月">‹</button><button onclick="goToday()">今日</button><button onclick="mv(1)" aria-label="下个月">›</button></div></div>'+
+  '<div class="week">'+['日','一','二','三','四','五','六'].map(x=>'<div>'+x+'</div>').join('')+'</div>'+
+  '<div class="grid">'+cells+'</div>'+
+  '<div class="two"><div class="card"><div class="big">'+dm+'<span style="font-size:18px"> 天</span></div><p>本月记录过</p></div>'+
+  '<div class="card"><div class="big">'+mc+'<span style="font-size:18px"> 张</span></div><p>本月丢进垃圾桶</p></div></div>'+
+  '<div class="quick"><button onclick="openFlow()"><span>✏️</span>写便签</button><button onclick="openFlow(1)"><span>⚡</span>快速记</button><button onclick="showAll()"><span>🗑️</span>翻垃圾桶</button><button onclick="warm()"><span>💌</span>暖心话</button></div>';
+}
+function renderStatsOld(){
+  const t=total(),fill=t%20,cnt=EM.map(()=>0);
+  Object.values(data.days).forEach(r=>r.forEach(x=>cnt[x.e]++));
+  const mx=Math.max(1,...cnt);
+  $('#stats').innerHTML=
+  '<div class="top"><div><h1 class="hand">垃圾桶</h1><small>丢掉的都不会再回来</small></div></div>'+
+  '<div class="card" style="margin-top:16px"><div class="big">'+t+'<span style="font-size:18px"> 张</span></div><p>一共丢掉的便签</p>'+
+  '<div class="bar"><div style="width:'+fill*5+'%"></div></div><small>再丢 '+(20-fill)+' 张，垃圾桶满了可以清空换新外观</small></div>'+
+  '<div class="card" style="margin-top:12px"><b>情绪排行</b>'+
+  EM.map((m,i)=>[m,cnt[i]]).sort((a,b)=>b[1]-a[1]).filter(x=>x[1]>0).map(([m,c])=>
+    '<div class="row"><span style="width:62px">'+m.e+' '+m.n+'</span><div class="track"><div style="width:'+c/mx*100+'%"></div></div><span>'+c+'</span></div>').join('')+'</div>';
+}
+function mv(n){vm+=n;if(vm<0){vm=11;vy--}if(vm>11){vm=0;vy++}renderHome()}
+function goToday(){const d=new Date();vy=d.getFullYear();vm=d.getMonth();renderHome()}
+function tab(w){
+  $('#home').parentNode.querySelector('#stats').style.display=w==='stats'?'block':'none';
+  $('#home').style.display=w==='home'?'block':'none';
+  $('#t1').classList.toggle('on',w==='home');$('#t2').classList.toggle('on',w==='stats');
+  if(w==='stats')renderStats();else renderHome();
+}
+
+$('#picker').innerHTML=EM.map((m,i)=>'<button class="pick" onclick="choose('+i+')"><span>'+m.e+'</span>'+m.n+'</button>').join('');
+let quick=false;
+function openFlow(q){quick=!!q;
+  resetFlow();$('#flow').classList.add('open');
+}
+function resetFlow(){
+  $('#picker').style.display='grid';$('#s2').classList.remove('on');$('#done').classList.remove('on');
+  $('#ftitle').textContent=quick?'快速记一下':'今天心情怎么样？';
+  const n=$('#note');n.getAnimations().forEach(a=>a.cancel());$('#lid').getAnimations().forEach(a=>a.cancel());
+  n.classList.remove('crumpling');n.style.visibility='visible';const b=$('#ball');b.getAnimations().forEach(a=>a.cancel());b.style.display='none';$('#txt').value='';busy=false;
+  document.querySelectorAll('.pick').forEach(b=>b.classList.remove('sel'));
+}
+function closeFlow(){$('#flow').classList.remove('open');renderHome();if($('#stats').style.display!=='none')renderStats()}
+function choose(i){
+  cur=i;const m=EM[i];
+  if(quick){const k=key(new Date());(data.days[k]=data.days[k]||[]).push({e:i,t:'',ts:Date.now()});save();
+    $('#dline').textContent=LINES[Math.floor(Math.random()*LINES.length)];
+    $('#dsub').innerHTML=m.e+' '+m.n+'　今天第 '+data.days[k].length+' 张';
+    $('#done').classList.add('on');return}
+  document.querySelectorAll('.pick')[i].classList.add('sel');
+  setTimeout(()=>{
+    $('#picker').style.display='none';$('#s2').classList.add('on');
+    $('#ftitle').textContent='写给垃圾桶';
+    $('#note').style.setProperty('--paper',m.c);
+    $('#nlab').innerHTML=m.e+' '+m.n;
+    const d=new Date();$('#ndate').textContent=(d.getMonth()+1)+'月'+d.getDate()+'日';
+    $('#txt').placeholder=m.p;
+  },220);
+}
+async function throwNote(){
+  if(busy)return;busy=true;
+  const note=$('#note'),can=$('#can'),lid=$('#lid'),pop=$('#pop'),ball=$('#ball');
+  const nr=note.getBoundingClientRect(),cr=can.getBoundingClientRect();
+  const dx=cr.left+cr.width/2-(nr.left+nr.width/2),dy=cr.top+cr.height*0.3-(nr.top+nr.height/2);
+  note.classList.add('crumpling');
+  ball.style.cssText='display:block;opacity:0;left:'+(nr.left+nr.width/2-40)+'px;top:'+(nr.top+nr.height/2-40)+'px';ball.style.setProperty('--paper',EM[cur].c);
+  await note.animate([
+    {transform:'rotate(-2deg) scale(1)',borderRadius:'4px'},
+    {transform:'rotate(6deg) scale(.8,.55)',offset:.5},
+    {transform:'rotate(-8deg) scale(.55,.5)'}
+  ],{duration:420,fill:'forwards',easing:'ease-in'}).finished;
+  note.style.visibility='hidden';ball.style.opacity=1;
+  await ball.animate([{transform:'scale(.6) rotate(0)'},{transform:'scale(1.15) rotate(25deg)',offset:.6},{transform:'scale(1) rotate(15deg)'}],{duration:260,fill:'forwards',easing:'ease-out'}).finished;
+  lid.animate([{transform:'rotate(0)'},{transform:'rotate(-38deg)'}],{duration:250,fill:'forwards'});
+  await ball.animate([
+    {transform:'translate(0,0) rotate(15deg) scale(1)'},
+    {transform:'translate('+dx*.5+'px,'+(dy*.5-150)+'px) rotate(260deg) scale(.85)',offset:.5},
+    {transform:'translate('+dx+'px,'+dy+'px) rotate(500deg) scale(.45)'}
+  ],{duration:700,fill:'forwards',easing:'ease-in'}).finished;
+  ball.style.display='none';
+  lid.animate([{transform:'rotate(-38deg)'},{transform:'rotate(0)'}],{duration:200,fill:'forwards'});
+  can.animate([{transform:'translateX(0) rotate(0)'},{transform:'translateX(-8px) rotate(-7deg)'},{transform:'translateX(8px) rotate(7deg)'},{transform:'translateX(-5px) rotate(-4deg)'},{transform:'translateX(4px) rotate(3deg)'},{transform:'translateX(0) rotate(0)'}],{duration:650,easing:'ease-in-out'});
+  
+  
+  try{navigator.vibrate&&navigator.vibrate(40)}catch(e){}
+  const k=key(new Date());
+  (data.days[k]=data.days[k]||[]).push({e:cur,t:$('#txt').value.trim(),ts:Date.now()});save();
+  setTimeout(()=>{
+    $('#dline').textContent=LINES[Math.floor(Math.random()*LINES.length)];
+    $('#dsub').textContent='今天第 '+data.days[k].length+' 张';
+    $('#done').classList.add('on');
+  },850);
+}
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function showDayOld(k){
+  const r=data.days[k]||[],p=k.split('-'),isT=k===key(new Date());
+  $('#sheetin').innerHTML='<div class="top"><div><h1>'+(+p[1])+'月'+(+p[2])+'日</h1><small>共 '+r.length+' 条心情，主要是「'+EM[main(r)].e+' '+EM[main(r)].n+'」</small></div><button class="x" onclick="closeSheet()" aria-label="关闭">✕</button></div>'+
+  r.map(x=>{const m=EM[x.e],tm=x.ts?new Date(x.ts):null;
+    return '<div class="entry" style="border-left:5px solid '+m.c+'"><div class="eh"><b>'+m.e+' '+m.n+'</b><span>'+(tm?pad(tm.getHours())+':'+pad(tm.getMinutes()):'')+'</span></div><p'+(x.t?'':' class="empty"')+'>'+(x.t?esc(x.t):'（只记了心情，没写内容）')+'</p></div>'}).join('')+
+  (isT?'<button class="cta" onclick="closeSheet();openFlow()">＋ 再丢一张</button>':'');
+  $('#sheet').classList.add('open');
+}
+function closeSheet(){$('#sheet').classList.remove('open')}
+const WARM=['你已经很努力了，今天先到这里也可以','情绪没有对错，被看见就好','深呼吸三次，再决定下一步','今天的烦恼，丢掉就轻一点','好好吃饭，好好睡觉，你值得','慢慢来，比较快'];
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),2200)}
+function warm(){toast(WARM[Math.floor(Math.random()*WARM.length)])}
+let ed=null;
+function showDay(k){
+  const r=data.days[k]||[],p=k.split('-'),today=key(new Date());
+  $('#sheetin').innerHTML='<div class="top"><div><h1>'+(+p[1])+'月'+(+p[2])+'日</h1><small>'+(r.length?'共 '+r.length+' 条心情，主要是「'+EM[main(r)].e+' '+EM[main(r)].n+'」':'这天还没有记录')+'</small></div><button class="x" onclick="closeSheet()" aria-label="关闭">✕</button></div>'+
+  r.map((x,i)=>{const m=EM[x.e],tm=x.ts&&!x.bf?new Date(x.ts):null;
+    return '<div class="entry" style="border-left:5px solid '+m.c+'"><div class="eh"><b>'+m.e+' '+m.n+'</b><span>'+(tm?pad(tm.getHours())+':'+pad(tm.getMinutes()):'')+'<button class="lnk" onclick="editEntry(\''+k+'\','+i+')">编辑</button></span></div><p'+(x.t?'':' class="empty"')+'>'+(x.t?esc(x.t):'（只记了心情，没写内容）')+'</p></div>'}).join('')+
+  (k===today?'<button class="cta" onclick="closeSheet();openFlow()">＋ 再丢一张</button>':'<button class="cta" onclick="editEntry(\''+k+'\',-1)">＋ 补记一条</button>');
+  $('#sheet').classList.add('open');
+}
+function editEntry(k,i){const x=i>=0?data.days[k][i]:{e:null,t:''};ed={k,i,e:x.e,t:x.t,del:false};renderEd()}
+function renderEd(){
+  const tx=$('#etxt');if(tx)ed.t=tx.value;
+  const p=ed.k.split('-');
+  $('#sheetin').innerHTML='<div class="top"><div><h1>'+(ed.i>=0?'修改心情':'补记心情')+'</h1><small>'+(+p[1])+'月'+(+p[2])+'日</small></div><button class="x" onclick="showDay(\''+ed.k+'\')" aria-label="返回">‹</button></div>'+
+  '<div class="mini">'+EM.map((m,i)=>'<button class="'+(ed.e===i?'on':'')+'" onclick="ed.e='+i+';renderEd()">'+m.e+'<em>'+m.n+'</em></button>').join('')+'</div>'+
+  '<textarea class="inp" id="etxt" maxlength="500" style="height:130px;padding:12px 14px;resize:none;line-height:1.6" placeholder="想说点什么吗（可以不写）">'+esc(ed.t||'')+'</textarea>'+
+  '<button class="cta" onclick="saveEd()">保存</button>'+
+  (ed.i>=0?'<button class="cta" style="background:var(--pink2);color:var(--pink);box-shadow:none" onclick="delEd()">'+(ed.del?'再点一次确认删除':'删除这条')+'</button>':'');
+}
+function refreshAll(){renderHome();if($('#stats').style.display!=='none')renderStats()}
+function saveEd(){
+  const tx=$('#etxt');ed.t=(tx?tx.value:ed.t||'').trim();
+  if(ed.e===null){toast('先选一个情绪');return}
+  const k=ed.k,pp=k.split('-');
+  if(ed.i>=0){const x=data.days[k][ed.i];x.e=ed.e;x.t=ed.t}
+  else{
+    const arr=data.days[k]=data.days[k]||[];
+    arr.push(k===key(new Date())?{e:ed.e,t:ed.t,ts:Date.now()}:{e:ed.e,t:ed.t,ts:new Date(+pp[0],+pp[1]-1,+pp[2],12,0).getTime()+arr.length*60000,bf:true});
+  }
+  data.days[k].sort((a,b)=>a.ts-b.ts);
+  save();refreshAll();showDay(k);toast('已保存');
+}
+function delEd(){
+  if(!ed.del){ed.del=true;renderEd();return}
+  const k=ed.k;data.days[k].splice(ed.i,1);
+  if(!data.days[k].length)delete data.days[k];
+  save();refreshAll();
+  if(data.days[k])showDay(k);else closeSheet();
+  toast('已删除');
+}
+function main(r){const c={};r.forEach(x=>c[x.e]=(c[x.e]||0)+1);let b=-1,bc=0;for(let i=r.length-1;i>=0;i--){const e=r[i].e;if(c[e]>bc){bc=c[e];b=e}}return b}
+function showAll(){
+  const it=[];for(const k in data.days)data.days[k].forEach(x=>it.push([k,x]));
+  it.sort((a,b)=>b[0].localeCompare(a[0])||(b[1].ts-a[1].ts));
+  $('#sheetin').innerHTML='<div class="top"><div><h1>翻垃圾桶</h1><small>共 '+it.length+' 张，丢掉的心情都在这里</small></div><button class="x" onclick="closeSheet()" aria-label="关闭">✕</button></div>'+
+  (it.length?it.slice(0,60).map(([k,x])=>{const m=EM[x.e],p=k.split('-'),tm=x.ts?new Date(x.ts):null;
+    return '<div class="entry" style="border-left:5px solid '+m.c+'"><div class="eh"><b>'+m.e+' '+m.n+'</b><span>'+(+p[1])+'月'+(+p[2])+'日'+(tm?' '+pad(tm.getHours())+':'+pad(tm.getMinutes()):'')+'</span></div><p'+(x.t?'':' class="empty"')+'>'+(x.t?esc(x.t):'（只记了心情，没写内容）')+'</p></div>'}).join(''):'<p style="color:var(--sub)">垃圾桶还是空的，去丢第一张吧。</p>');
+  $('#sheet').classList.add('open');
+}
+const THEMES=[
+ {n:'樱花粉',a:'#e8729b',bg:'#ffe9f1',pink2:'#fbd3e1',line:'#f3d6e1',ink:'#4a3340',sub:'#b79aa8',card:'#fffafc'},
+ {n:'雾霭蓝',a:'#6d8aa6',bg:'#e8eef4',pink2:'#d3dfea',line:'#d5e0ea',ink:'#34404c',sub:'#8a9bab',card:'#fbfdff'},
+ {n:'森林绿',a:'#6a8b77',bg:'#e9f0ea',pink2:'#d4e2d8',line:'#d6e3da',ink:'#33423a',sub:'#8ba091',card:'#fbfdfb'},
+ {n:'燕麦杏',a:'#b58763',bg:'#f6ece2',pink2:'#ecd9c7',line:'#ebdccc',ink:'#4a3a2f',sub:'#ad9784',card:'#fffcf8'},
+ {n:'薰衣紫',a:'#8878a6',bg:'#eeeaf4',pink2:'#ddd5ea',line:'#dfd9eb',ink:'#3e3550',sub:'#9a90ae',card:'#fcfbff'},
+ {n:'岩石灰',a:'#7b7b85',bg:'#eeeeef',pink2:'#dcdce0',line:'#dedee2',ink:'#37373d',sub:'#98989f',card:'#fcfcfc'}
+];
+function applyTheme(){
+  const t=THEMES[data.prefs.theme]||THEMES[0],s=document.documentElement.style,dark=matchMedia('(prefers-color-scheme: dark)').matches;
+  s.setProperty('--pink',t.a);
+  s.setProperty('--glow','rgba('+[1,3,5].map(i=>parseInt(t.a.substr(i,2),16)).join(',')+',.4)');
+  if(dark){s.setProperty('--pink2','color-mix(in srgb,'+t.a+' 28%,#2b2028)');s.setProperty('--line','color-mix(in srgb,'+t.a+' 22%,#2b2028)')}
+  else['bg','pink2','line','ink','sub','card'].forEach(k=>s.setProperty('--'+k,t[k]));
+}
+function setTheme(i){data.prefs.theme=i;save();applyTheme();renderStats()}
+let rp='m';
+function setRp(v){rp=v;renderStats()}
+const GRP={pos:[0,1,2,9],chill:[3,5],act:[7],low:[6,8],busy:[4]};
+const TY={
+ chill:{t:'慢悠悠型',d:'你的节奏很舒服，平静和悠闲占了大部分，不太容易被外界带着跑。',s:['保持让你舒服的节奏，别被别人催着走','偶尔给生活加点小刺激，比如尝试一件新事','平静的时候也记一笔，以后会很治愈']},
+ pos:{t:'乐观开朗型',d:'你的情绪大多轻盈明亮，容易从小事里找到快乐，也能很快恢复平静。',s:['把开心的事写下来，低落时翻出来看看','把好状态分享给身边的人','忙起来的时候，别忽略自己的疲惫']},
+ act:{t:'急性子型',d:'你对外界很敏感，生气来得快，说明你在乎事情，也容易被消耗。',s:['情绪上来先停 10 秒，慢慢呼吸 3 次','先把吐槽丢进垃圾桶，再决定要不要沟通','给自己留一段不被打扰的时间']},
+ low:{t:'闷在心里型',d:'你习惯把感受放在心里，难过、疲惫会悄悄累积，需要更多被看见。',s:['每天留 10 分钟做让自己放松的事','有委屈别独自扛，试着对信任的人说一句','先把睡眠和饮食照顾好']},
+ busy:{t:'大忙人型',d:'你的日子被事情塞得很满，常常忙得停不下来，情绪容易被节奏推着走。',s:['每天安排一个什么都不做的 15 分钟','待办按轻重排序，别什么都往身上揽','忙完给自己一个小奖励']},
+ mix:{t:'情绪丰富型',d:'你的情绪很丰富，没有被某一种情绪占满，说明你能感受到不同的状态。',s:['继续保持记录，留意情绪的变化规律','开心时记下原因，难过时记下需要什么','定期回看，和过去的自己聊聊']}
+};
+function analyze(cnt,n){
+  if(n<3)return '<p style="color:var(--sub)">再多记几条（至少 3 条），就能看出你的情绪性格啦。</p>';
+  const g={};for(const k in GRP)g[k]=GRP[k].reduce((a,i)=>a+cnt[i],0);
+  let top='mix',best=0;for(const k in g)if(g[k]>best){best=g[k];top=k}
+  if(best/n<0.4)top='mix';
+  const ty=TY[top],ti=cnt.indexOf(Math.max(...cnt)),neg=(g.act+g.low)/n;
+  return '<h3>'+ty.t+'</h3><p>'+ty.d+'最常出现的是「'+EM[ti].e+' '+EM[ti].n+'」，占 '+Math.round(cnt[ti]/n*100)+'%。</p><b style="font-size:14px">小建议</b><ul>'+ty.s.map(x=>'<li>'+x+'</li>').join('')+'</ul>'+
+  (neg>=.6&&n>=6?'<p class="warn">最近偏低落的情绪比较多。如果持续两周以上，或影响了睡眠和生活，建议和信任的人聊聊，或寻求专业帮助。</p>':'')+
+  '<small style="color:var(--sub)">根据你的记录自动生成，仅供参考，不是心理诊断。</small>';
+}
+function mask(a){return a.length>6?a.slice(0,3)+'****'+a.slice(-2):a}
+function renderStats(){
+  const p=data.prefs,on=!!p.acct,now=new Date(),pre=rp==='m'?now.getFullYear()+'-'+pad(now.getMonth()+1):''+now.getFullYear();
+  const cnt=EM.map(()=>0);let n=0;
+  for(const k in data.days)if(k.startsWith(pre))data.days[k].forEach(x=>{cnt[x.e]++;n++});
+  const rank=EM.map((m,i)=>[m,cnt[i]]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]),mx=rank.length?rank[0][1]:1,medal=['🥇','🥈','🥉'];
+  $('#stats').innerHTML=
+  '<div class="top"><div><h1 class="hand">我的</h1><small>只属于你的小角落</small></div></div>'+
+  '<div class="card" style="margin-top:16px;display:flex;align-items:center;gap:14px"><div style="width:56px;height:56px;border-radius:28px;background:var(--pink2);display:flex;align-items:center;justify-content:center;font-size:30px">🐈</div><div style="flex:1;min-width:0"><b style="font-size:18px">'+(on?esc(p.nick):'未登录')+'</b><p style="margin:2px 0 0">'+(on?esc(mask(p.acct)):'登录后可以设置昵称')+'</p><small>已丢掉 '+total()+' 张</small></div><button class="x" style="width:auto;padding:0 14px;font-size:14px" onclick="showAccount()">'+(on?'设置':'登录')+'</button></div>'+
+  '<div class="card" style="margin-top:12px"><b>主题色</b><div class="sw">'+THEMES.map((t,i)=>'<button class="'+(i===p.theme?'on':'')+'" onclick="setTheme('+i+')"><i style="background:'+t.a+'"></i>'+t.n+'</button>').join('')+'</div></div>'+
+  '<div class="card" style="margin-top:12px"><b>情绪排行榜</b><div class="seg"><button class="'+(rp==='m'?'on':'')+'" onclick="setRp(\'m\')">本月</button><button class="'+(rp==='y'?'on':'')+'" onclick="setRp(\'y\')">本年</button></div>'+
+  (rank.length?rank.map(([m,c],i)=>'<div class="row"><span style="width:92px">'+(i<3?medal[i]:(i+1)+'.')+' '+m.e+' '+m.n+'</span><div class="track"><div style="width:'+c/mx*100+'%"></div></div><span style="width:44px;text-align:right">'+Math.round(c/n*100)+'%</span></div>').join(''):'<p style="color:var(--sub);font-size:14px">这段时间还没有记录。</p>')+'</div>'+
+  '<div class="card ana" style="margin-top:12px"><b>你的情绪性格</b><div style="margin-top:6px">'+analyze(cnt,n)+'</div></div>'+'<button class="cta" style="background:var(--pink2);color:var(--pink);box-shadow:none" onclick="clearAll()">清除全部记录</button>';
+}
+function showAccount(){
+  const p=data.prefs,on=!!p.acct;
+  $('#sheetin').innerHTML='<div class="top"><div><h1>'+(on?'账号设置':'登录')+'</h1><small>原型演示，信息只保存在本机</small></div><button class="x" onclick="closeSheet()" aria-label="关闭">✕</button></div>'+
+  '<input class="inp" id="iacc" placeholder="手机号或邮箱" value="'+esc(p.acct||'')+'"'+(on?' disabled':'')+'>'+
+  '<input class="inp" id="inick" maxlength="12" placeholder="设置昵称（最多 12 个字）" value="'+esc(p.nick||'')+'">'+
+  '<button class="cta" onclick="saveAcct()">'+(on?'保存昵称':'登录')+'</button>'+
+  (on?'<button class="cta" style="background:var(--pink2);color:var(--pink);box-shadow:none" onclick="logout()">退出登录</button>':'');
+  $('#sheet').classList.add('open');
+}
+function saveAcct(){
+  const a=$('#iacc').value.trim(),nk=$('#inick').value.trim();
+  if(!a){toast('请输入手机号或邮箱');return}
+  data.prefs.acct=a;data.prefs.nick=nk||'小可爱';save();closeSheet();renderStats();renderHome();toast('已保存');
+}
+function logout(){data.prefs.acct='';data.prefs.nick='';save();closeSheet();renderStats();renderHome();toast('已退出登录')}
+let wx=null,dbd=null,dbt=0,clr=false;
+const WC=[[0,'☀️','晴'],[2,'🌤️','多云'],[3,'☁️','阴'],[48,'🌫️','雾'],[57,'🌦️','毛毛雨'],[67,'🌧️','雨'],[77,'❄️','雪'],[82,'🌦️','阵雨'],[86,'🌨️','阵雪'],[99,'⛈️','雷雨']];
+function wxText(){
+  if(!wx)return key(new Date())==='2026-11-05'?'广州 🌧️ 小雨 22~28°（今日预报）':'广州';
+  const w=WC.find(x=>wx.c<=x[0])||WC[2];
+  return '广州 '+w[1]+' '+w[2]+' '+wx.t+'°';
+}
+function loadWx(){
+  
+  (async()=>{
+    try{
+      const c=new AbortController(),tm=setTimeout(()=>c.abort(),8000);
+      const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=23.13&longitude=113.26&current=temperature_2m,weather_code',{signal:c.signal});
+      clearTimeout(tm);
+      const j=await r.json();
+      wx={t:Math.round(j.current.temperature_2m),c:j.current.weather_code};
+      renderHome();
+    }catch(e){}
+  })();
+}
+function syncDb(){
+  if(!dbd)return;clearTimeout(dbt);
+  dbt=setTimeout(()=>{try{dbd.set({json:JSON.stringify(data)}).catch(()=>{})}catch(e){}},300);
+}
+async function initDb(){
+  try{
+    if(!window.claude)return;
+    const db=await claude.use('db'),us=await claude.use('user');
+    if(!db||!us)return;
+    const id=await us.id();if(!id)return;
+    const ref=db.collection('data/users/'+id).doc('moodtrash');
+    const snap=await ref.get();
+    let remote=null;
+    if(snap.exists){try{remote=JSON.parse(snap.data().json)}catch(e){}}
+    if(remote&&(remote.u||0)>(data.u||0)){
+      data=remote;
+      try{localStorage.setItem(K,JSON.stringify(data))}catch(e){}
+      applyTheme();refreshAll();
+    }
+    dbd=ref;
+    if(data.u&&(!remote||data.u>(remote.u||0)))syncDb();
+  }catch(e){}
+}
+function clearAll(){
+  if(!clr){clr=true;toast('再点一次确认，清除后无法恢复');setTimeout(()=>{clr=false},4000);return}
+  clr=false;data.days={};save();refreshAll();renderStats();toast('已清除');
+}
+applyTheme();
+renderHome();
+initDb();
+(function(){
+  const c=$('#cf'),cols=['#f4a79d','#8fd0f0','#e6d56a','#f6c36b','#f58fb4','#bfe3a0'];
+  for(let i=0;i<28;i++){
+    const e=document.createElement('i'),w=i%4===0?4:6+Math.random()*7,h=i%4===0?18+Math.random()*12:w*1.7;
+    e.style.cssText='left:'+(Math.random()*100)+'%;width:'+w+'px;height:'+h+'px;background:'+cols[i%6]+';border-radius:'+(i%3?'2px':'50%')+';animation-duration:'+(3.5+Math.random()*3)+'s;animation-delay:'+(-Math.random()*6)+'s';
+    c.appendChild(e);
+  }
+})();
+</script>
+</body>
+</html>
